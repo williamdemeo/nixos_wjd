@@ -653,15 +653,105 @@ cd ~/git/LANG/Haskell/arrivals
 cabal init
 ```
 
+
+## 27 March 2023
+
+### Create a LaTeX project with flakes
+
+**Ref**. [Exploring Nix Flakes: Build LaTeX Documents Reproducibly][]
+
+**Summarized Steps**.
+
+1.  Create a project directory (e.g., `~/flatex`) and a file called `document.tex` inside it.
+
+    This file, `~/flatex/document.tex`, should contain the following.
+    
+    ```
+    \documentclass[a4paper]{article}
+    \begin{document}
+      Hello, World!
+    \end{document}
+    ```
+
+2.  Create a file called `flake.nix` inside the project directory.
+
+    This file, `~/flatex/flake.nix`, should contain the following.
+
+    ```
+    {
+      description = "LaTeX Document Demo";
+      inputs = {
+        nixpkgs.url = github:NixOS/nixpkgs/nixos-21.05;
+        flake-utils.url = github:numtide/flake-utils;
+      };
+      outputs = { self, nixpkgs, flake-utils }:
+        with flake-utils.lib; eachSystem allSystems (system:
+        let
+          pkgs = nixpkgs.legacyPackages.${system};
+          tex = pkgs.texlive.combine {
+              inherit (pkgs.texlive) scheme-minimal latex-bin latexmk;
+          };
+        in rec {
+          packages = {
+            document = pkgs.stdenvNoCC.mkDerivation rec {
+              name = "latex-demo-document";
+              src = self;
+              buildInputs = [ pkgs.coreutils tex ];
+              phases = ["unpackPhase" "buildPhase" "installPhase"];
+              buildPhase = ''
+                export PATH="${pkgs.lib.makeBinPath buildInputs}";
+                mkdir -p .cache/texmf-var
+                env TEXMFHOME=.cache TEXMFVAR=.cache/texmf-var \
+                  latexmk -interaction=nonstopmode -pdf -lualatex \
+                  document.tex
+              '';
+              installPhase = ''
+                mkdir -p $out
+                cp document.pdf $out/
+              '';
+            };
+          };
+          defaultPackage = packages.document;
+        });
+    }
+    ```
+
+3.  Create a `flake.lock` file to pin our input flakes to their current versions.
+
+    ```
+    cd ~/flatex
+    nix flake lock
+    ```
+
+4.  Check our project files into a git repository, or else the nix build won't find them.
+
+    *The variable self will only contain those files of our source that are checked into version control.*
+
+    ```
+    cd ~/flatex
+    git init
+    git add flake.{nix,lock} document.tex
+    git commit -m "initial commit"
+    ```
+    
+5.  Build the document and find the resulting pdf in the `~/flatex/result` directory.
+
+    ```
+    cd ~/flatex
+    nix build
+    evince ~/flatex/result/document.pdf
+    ```
+
 ------------------------------
 ------------------------------
 
 
-## References
+## Reference Links
 
 
 +  [12factor][]
 +  [1lab website repo][]
++  [626245][]
 
 +  [cachix][]
 +  [cloudflare dash][]
@@ -669,25 +759,52 @@ cabal init
 +  [cloudflare docs][]
 
 +  [direnv][]
-+  [direnv (the nixos guide)][]
++  [direnv (the nixos guide)][] 
 
++  [Doom Emacs][]
++  [doom emacs][]
++  [doom][]
++  [Doom Emacs on NixOS][]
+
++  [emacs][]
++  [Exploring Nix Flakes: Build LaTeX Documents Reproducibly][]
+
++  [git][]
 +  [github ip addresses][]
++  [gnome-tweaks][]
 
 +  [haskell language server][]
 +  [haskell4nix][]
 +  [haskell4nix readthedocs section: how to install haskell-languageserver][haskell4nix hls]
 +  [How to mount internal drives as a normal user in NixOS][] (unix.SE post) and [this answer][626245] to it.
 
++  [Nerd Font: FiraCode 6.2][]
 +  [Nix][]
++  [nix][]
 +  [nix.conf man page][]
 +  [nix.dev][]
 +  [nix.dev/tutorials/continuous-integration-github-actions][]
++  [nix-community/emacs-overlay][]
 +  [nix-dev-env][]
 +  [nix-env][]
 +  [nixos-iso][]
 +  [nix-shell][]
 +  [nixos.org][]
 +  [nixos.org/guides/nix-language.html][]
+
++  [oh-my-zsh][]
+
++  [quickstart section][]
+
++  [spacemacs][]
++  [starship][]
++  [Sysadmin Pocket Survival Guide -- NixOS][]
+
++  [things to do after installing nixos][]
+
++  [VSCode][]
+
++  [zsh][]
 
 
 ----------------------------
@@ -710,6 +827,7 @@ cabal init
 [Doom Emacs on NixOS]: https://github.com/doomemacs/doomemacs/blob/master/docs/getting_started.org#nixos
 
 [emacs]: https://www.gnu.org/software/emacs/
+[Exploring Nix Flakes: Build LaTeX Documents Reproducibly]: https://flyx.org/nix-flakes-latex/
 
 [git]: https://git-scm.com/
 [github ip addresses]: https://docs.github.com/en/pages/configuring-a-custom-domain-for-your-github-pages-site/managing-a-custom-domain-for-your-github-pages-site#configuring-an-apex-domain
@@ -740,6 +858,7 @@ cabal init
 
 [spacemacs]: https://www.spacemacs.org/
 [starship]: https://starship.rs/guide/
+[Sysadmin Pocket Survival Guide -- NixOS]: https://tin6150.github.io/psg/nixos.html
 
 [things to do after installing nixos]: https://itsfoss.com/things-to-do-after-installing-nixos/
 
