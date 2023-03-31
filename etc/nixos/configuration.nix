@@ -8,13 +8,24 @@
 { config, pkgs, callPackages, ... }:
 
 {
-  nix.settings.experimental-features = [ "nix-command" "flakes" ];
-  # (see https://nixos.wiki/wiki/Flakes)
-  
-  imports =
-    [ # Include the results of the hardware scan.
-      ./hardware-configuration.nix
+
+  nix.settings = {
+    # see: 
+    # https://nixos.wiki/wiki/Flakes
+    # https://github.com/input-output-hk/cardano-ledger#nix-cache
+    experimental-features = [ "nix-command" "flakes" ];
+    substituters = [
+      "https://cache.nixos.org"
+      "https://cache.iog.io"
     ];
+    trusted-public-keys = [
+      "hydra.iohk.io:f/Ea+s+dFdN+3Y/G+FDgSq+a5NEWhJGzdjvKNGv0/EQ="
+    ];
+  };
+  
+  imports = [ # Include the results of the hardware scan.
+    ./hardware-configuration.nix
+  ];
 
   # Bootloader.
   boot.loader.systemd-boot.enable = true;
@@ -124,40 +135,48 @@
   # List packages installed in system profile. To search: `nix search wget` or `nix-env -qaP wget`
   environment.systemPackages = with pkgs; [ 
     wget
-    vscode
 
+    # browsers
     firefox
     google-chrome
-    dmenu
-    fira-code
 
-    alacritty
-    fzf
-    silver-searcher 
+    nerdfonts
+    #fira-code  # for nice fonts
 
-    meld 
-    git 
-    direnv
+    fzf                  # command-line fuzzy finder
+    silver-searcher      # ag search program
 
-    nodejs
-    gnumake
-    cmake
+    meld                 # graphical diff tool
+    git                  # (second) Greatest Invention of Torvalds
+    direnv               # load and unload env vars depending on working directory
 
-    ripgrep 
-    rlwrap 
-    nixfmt
-    shellcheck
+    nodejs               # javascript runtime environment
+    gnumake              # make good stuff
+    cmake                # make crummy stuff
 
-    emacs
-    coreutils
-    fd
+    ripgrep              # recursive search for regexps
+    rlwrap               # readline wrapper (makes editing commands easier)
+    nixfmt               # formatter for nix code
+    shellcheck           # shell script analysis tool
+
+    emacs                # editor that does everything and more
+    emacsPackages.undo-fu  # undo helper with redo
+
     (aspellWithDicts (dicts: with dicts; [ en en-computers en-science ]))
-    emacsPackages.undo-fu
+
+    coreutils            # gnu utils for file, shell, and text manipulation
+    fd                   # simple, fast alternative to find
+
     haskellPackages.ghc
     haskellPackages.cabal-install
     haskellPackages.haskell-language-server
     haskellPackages.hoogle
 
+    vscode               # Visual Studio Code (good for Scala/Spark progs)
+    openjdk11            # open source java dev kit (v. 11) (good for Scala/Spark progs)
+
+    st                   # suckless terminal
+    unzip
   ];
 
   environment.sessionVariables.NIXOS_OZONE_WL = "1"; # see https://nixos.wiki/wiki/Slack
@@ -184,7 +203,7 @@
     mplus-outline-fonts.githubRelease
     dina-font
     proggyfonts
-    (nerdfonts.override { fonts = [ "FiraCode" "DroidSansMono" ]; })
+    #(nerdfonts.override { fonts = [ "FiraCode" "DroidSansMono" ]; })
   ];
 
 
@@ -194,7 +213,39 @@
     description = "William DeMeo";
     extraGroups = [ "networkmanager" "wheel" ];
     shell = pkgs.zsh;
-    packages = with pkgs; [ tdesktop oh-my-zsh starship texlive.combined.scheme-medium megasync ];
+    packages = with pkgs; [ 
+      tdesktop 
+      oh-my-zsh 
+      starship 
+      texlive.combined.scheme-medium 
+      megasync
+      (st.overrideAttrs (oldAttrs: rec {
+        patches = [
+          ## local patches:
+          #/nix/store/slhldp99nzbdbb85wk16pcwdm1yy5687-st-colorschemes-0.8.5.diff
+          #/nix/store/74cdhk2mkpia61r6rkh54p4ny90vjp4s-st-defaultfontsize-20210225-4ef0cbd.diff
+
+          ## ~~~ patches from st.suckless.org ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+          (fetchpatch {
+            url = "https://st.suckless.org/patches/defaultfontsize/st-defaultfontsize-20210225-4ef0cbd.diff";
+            sha256 = "0jji1p096zpkyxg7cmxhj4mgvwg582xgl1xw7lfkirxdxf1lp70m";
+          })
+          (fetchpatch {
+            url = "https://st.suckless.org/patches/colorschemes/st-colorschemes-0.8.5.diff";
+            sha256 = "0q153jn2xy6hmfllp1040nc9wq59klzl2j3miyzikw87krlh9dkk";
+          })
+        ];
+
+        # ~~ local config file ~~~~~~~~~
+        #configFile = writeText "config.def.h" (builtins.readFile /home/williamdemeo/.config/st/config.h);
+
+        # ~~ config file from GitHub ~~~
+        # configFile = writeText "config.def.h" (builtins.readFile "${fetchFromGitHub { owner = "LukeSmithxyz"; repo = "st"; rev = "8ab3d03681479263a11b05f7f1b53157f61e8c3b"; sha256 = "1brwnyi1hr56840cdx0qw2y19hpr0haw4la9n0rqdn0r2chl8vag"; }}/config.h");
+
+        #postPatch = "${oldAttrs.postPatch}\n cp ${configFile} config.def.h";
+      }))
+
+    ];
   };
 
 
