@@ -172,8 +172,14 @@
     haskellPackages.haskell-language-server
     haskellPackages.hoogle
 
-    vscode               # Visual Studio Code (good for Scala/Spark progs)
     openjdk11            # open source java dev kit (v. 11) (good for Scala/Spark progs)
+
+    sbt
+
+    vscode               # Visual Studio Code (good for Scala/Spark progs)
+    vscode-extensions.scala-lang.scala
+    vscode-extensions.scalameta.metals
+    vscode-extensions.haskell.haskell
 
     st                   # suckless terminal
     unzip
